@@ -1,11 +1,65 @@
+# Python cache files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pdb
+
+# Environment files (use HF Spaces secrets instead)
 .env
+.env.local
+.env.production
+.env.staging
+
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
 .vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
 *.log
+logs/
+
+# Gradio cache
 .gradio/
+gradio_cached_examples/
+
+# Temporary files
 temp/
+tmp/
+*.tmp
+
+# Testing
 .pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Model files (if large, use git-lfs instead)
+*.pkl
+*.joblib
+*.model
+
+# Data files (if large)
+*.csv
+*.json
+data/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
