@@ -15,7 +15,7 @@ tags:
   - microlearning
   - azure-openai
   - model-context-protocol
-short_description: AI-powered microlearning platform with MCP integration for the Gradio Agents & MCP Hackathon 2025
+short_description: AI-powered microlearning platform with MCP integration
 ---
 
 # 🚀 Agentic Skill Builder
