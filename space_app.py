@@ -814,9 +814,9 @@ def main():
         demo.launch(
             server_name="0.0.0.0",  # Allow external connections
             server_port=7860,       # HF Spaces default port
-            share=False,            # Don't create public link on HF Spaces
+            share=True,            # Don't create public link on HF Spaces
             show_error=True,        # Show errors in the UI
-            debug=False             # Disable debug mode in production
+            debug=True             # Disable debug mode in production
         )
     except Exception as e:
         print(f"Error launching app: {e}")
