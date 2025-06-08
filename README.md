@@ -31,18 +31,14 @@ An AI-powered microlearning platform that leverages Azure OpenAI, Gradio, and Mo
 
 **MCP Server in Action:**
 
-<video width="100%" controls loop preload="metadata">
-  <source src="./assets/hf-hackathon.mp4" type="video/mp4">
-  Your browser does not support the video tag. <a href="./assets/hf-hackathon.mp4">Download the demo video</a>
-</video>
+<iframe width="100%" height="450" src="https://www.youtube.com/embed/welG19Z8xxE?si=1fivrgf52ybd239p" title="SkillSprout MCP Demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 
-**🔊 Audio Troubleshooting:**
-- **Volume Check**: Ensure your system volume is up and not muted
-- **Browser Audio**: Check if your browser has audio enabled for this page
-- **Direct Download**: [Click here to download and play the video locally](./assets/hf-hackathon.mp4)
-- **Alternative View**: If embedded video has no sound, try opening the file directly in your browser
+**🎥 Watch the Demo:**
+- **YouTube Link**: [https://youtu.be/welG19Z8xxE?si=1fivrgf52ybd239p](https://youtu.be/welG19Z8xxE?si=1fivrgf52ybd239p)
+- **Full Screen**: Click the fullscreen button for better viewing experience
+- **Quality**: Set to HD for best quality
 
-*Note: The video demonstrates the MCP server endpoints being used by various MCP clients, showcasing the seamless integration between the Gradio interface and Model Context Protocol functionality.*
+*The video demonstrates the MCP server endpoints being used by various MCP clients, showcasing the seamless integration between the Gradio interface and Model Context Protocol functionality.*
 
 ## 🏆 Hackathon Highlights
 
