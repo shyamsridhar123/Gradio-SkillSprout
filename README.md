@@ -1,10 +1,10 @@
 ---
 title: SkillSprout - MCP Hackathon 2025
-emoji: 🌱
-colorFrom: green
-colorTo: blue
+emoji: 🚀
+colorFrom: blue
+colorTo: purple
 sdk: gradio
-sdk_version: 4.44.0
+sdk_version: 4.36.1
 app_file: space_app.py
 pinned: false
 license: mit

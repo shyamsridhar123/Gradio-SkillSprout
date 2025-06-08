@@ -806,23 +806,22 @@ def run_mcp_server():
     )
 
 def main():
-    """Main application entry point for Hugging Face Spaces"""
-    # Start MCP server in background thread
-    mcp_thread = threading.Thread(target=run_mcp_server, daemon=True)
-    mcp_thread.start()
-    
-    # Give MCP server time to start
-    time.sleep(2)
-    
-    # Create and launch Gradio interface
-    demo = create_interface()
-    # For Hugging Face Spaces, we should not set share=True
-    # Also ensure we're not setting any problematic launch parameters
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False  # Changed from True to False for HF Spaces
-    )
+    """Main function to launch the Gradio interface."""
+    try:
+        demo = create_interface()
+        
+        # For Hugging Face Spaces, we need specific launch parameters
+        demo.launch(
+            server_name="0.0.0.0",  # Allow external connections
+            server_port=7860,       # HF Spaces default port
+            share=False,            # Don't create public link on HF Spaces
+            show_error=True,        # Show errors in the UI
+            debug=False             # Disable debug mode in production
+        )
+    except Exception as e:
+        print(f"Error launching app: {e}")
+        # Fallback launch configuration
+        demo.launch()
 
 if __name__ == "__main__":
     main()
