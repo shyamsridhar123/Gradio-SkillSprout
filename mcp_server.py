@@ -1,5 +1,5 @@
 """
-MCP Server Integration for Agentic Skill Builder
+MCP Server Integration for SkillSprout
 This module provides Model Context Protocol endpoints for external agent integration.
 """
 
@@ -18,7 +18,7 @@ from app import AgenticSkillBuilder, UserProgress
 
 # FastAPI app for MCP endpoints
 mcp_app = FastAPI(
-    title="Agentic Skill Builder MCP Server",
+    title="SkillSprout MCP Server",
     description="Model Context Protocol endpoints for microlearning integration",
     version="1.0.0"
 )
@@ -50,7 +50,7 @@ class ProgressResponse(BaseModel):
 async def root():
     """Root endpoint with API information"""
     return {
-        "name": "Agentic Skill Builder MCP Server",
+        "name": "SkillSprout MCP Server",
         "version": "1.0.0",
         "description": "MCP endpoints for AI-powered microlearning",
         "endpoints": {
@@ -249,7 +249,7 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "service": "Agentic Skill Builder MCP Server"
+        "service": "SkillSprout MCP Server"
     }
 
 def run_mcp_server():
@@ -263,7 +263,7 @@ def run_mcp_server():
     )
 
 if __name__ == "__main__":
-    print("🚀 Starting Agentic Skill Builder MCP Server...")
+    print("🚀 Starting SkillSprout MCP Server...")
     print("📚 MCP endpoints will be available at http://localhost:8000")
     print("📖 API documentation at http://localhost:8000/docs")
     run_mcp_server()

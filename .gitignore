@@ -49,6 +49,17 @@ venv/
 env/
 .venv/
 
+# Large media files (use Git LFS if needed)
+*.mp4
+*.avi
+*.mov
+*.mkv
+assets/*.mp4
+
+# Enhanced version files (development)
+skillsprout_enhanced.py
+space_app copy.py
+
 # Model files (if large, use git-lfs instead)
 *.pkl
 *.joblib
@@ -63,3 +74,11 @@ data/
 build/
 dist/
 *.egg-info/
+
+# Development and documentation files
+demo_video_script.md
+deployment_guide.md
+validate_hackathon.py
+
+# Internal analysis and debugging documents
+SPACE_APP_ISSUES_ANALYSIS.md

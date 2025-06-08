@@ -1,4 +1,4 @@
-title: Agentic Skill Builder - MCP Hackathon 2025
+title: SkillSprout - MCP Hackathon 2025
 emoji: 🚀
 colorFrom: blue
 colorTo: purple
@@ -9,9 +9,10 @@ pinned: false
 license: mit
 tags:
   - mcp-server-track
+  - agent-demo-track
   - agents
   - education
   - microlearning
   - azure-openai
   - model-context-protocol
-short_description: AI-powered microlearning platform with MCP integration for the Gradio Agents & MCP Hackathon 2025
+short_description: AI-powered microlearning platform with MCP integration - Track 1 & 3 submission for Gradio Agents & MCP Hackathon 2025

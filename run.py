@@ -1,5 +1,5 @@
 """
-Launcher script for Agentic Skill Builder
+Launcher script for SkillSprout
 Runs both the Gradio interface and MCP server
 """
 
@@ -23,7 +23,7 @@ def run_mcp_server():
 def main():
     """Main launcher function"""
     print("=" * 60)
-    print("🎓 AGENTIC SKILL BUILDER")
+    print("🌱 SKILLSPROUT")
     print("   AI-Powered Microlearning Platform")
     print("=" * 60)
     print()
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n👋 Goodbye! Thanks for using Agentic Skill Builder!")
+        print("\n\n👋 Goodbye! Thanks for using SkillSprout!")
     except Exception as e:
         print(f"\n❌ Error: {e}")
         print("Please check your configuration and try again.")

@@ -440,7 +440,7 @@ def create_interface():
     """Create the Gradio interface"""
     
     with gr.Blocks(
-        title="Agentic Skill Builder",
+        title="SkillSprout",
         theme=gr.themes.Soft(),
         css="""
         .gradio-container {
@@ -452,7 +452,7 @@ def create_interface():
         
         # Header
         gr.Markdown("""
-        # 🚀 Agentic Skill Builder
+        # 🌱 SkillSprout
         ### AI-Powered Microlearning Platform
         
         Learn new skills through bite-sized lessons and adaptive quizzes powered by Azure OpenAI!

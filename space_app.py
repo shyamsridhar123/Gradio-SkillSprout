@@ -1,5 +1,5 @@
 """
-Agentic Skill Builder - Hackathon Submission
+SkillSprout - Hackathon Submission
 A unified app.py that serves both Gradio interface and MCP server endpoints
 for the Gradio Agents & MCP Hackathon 2025
 """
@@ -9,10 +9,13 @@ import json
 import asyncio
 import threading
 import time
-from datetime import datetime
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass, asdict, field
 import logging
+import math
+import base64
+from io import BytesIO
 
 from dotenv import load_dotenv
 import gradio as gr
@@ -22,11 +25,19 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
 
+# Voice narration imports
+try:
+    import azure.cognitiveservices.speech as speechsdk
+    SPEECH_SDK_AVAILABLE = True
+except ImportError:
+    SPEECH_SDK_AVAILABLE = False
+    print("⚠️ Azure Speech SDK not available. Voice narration will be disabled.")
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
+# Load environment variables (works locally with .env, in Spaces with secrets)
 load_dotenv()
 
 # Azure OpenAI client configuration
@@ -40,20 +51,186 @@ client = AzureOpenAI(
 LLM_DEPLOYMENT = os.getenv("AZURE_OPENAI_LLM_DEPLOYMENT", "gpt-4").replace('"', '')
 LLM_MODEL = os.getenv("AZURE_OPENAI_LLM_MODEL", "gpt-4").replace('"', '')
 
+# Voice configuration
+VOICE_KEY = os.getenv("AZURE_SPEECH_KEY", "").replace('"', '')
+VOICE_REGION = os.getenv("AZURE_SPEECH_REGION", "eastus2").replace('"', '')
+VOICE_NAME = os.getenv("AZURE_SPEECH_VOICE", "en-US-AvaMultilingualNeural").replace('"', '')
+
 # Import all classes from the main app
 from app import (
     UserProgress, Lesson, Quiz, LessonAgent, QuizAgent, 
     ProgressAgent, AgenticSkillBuilder
 )
 
+# Gamification System Classes
+@dataclass
+class Achievement:
+    """Achievement system for gamification"""
+    id: str
+    name: str
+    description: str
+    icon: str
+    unlocked: bool = False
+    unlock_condition: str = ""
+
+@dataclass
+class UserStats:
+    """Enhanced user statistics for gamification"""
+    user_id: str
+    total_points: int = 0
+    level: int = 1
+    achievements: List[str] = field(default_factory=list)
+    streak_days: int = 0
+    total_lessons: int = 0
+    total_quizzes: int = 0
+    correct_answers: int = 0
+    
+    def add_points(self, points: int):
+        """Add points and check for level up"""
+        self.total_points += points
+        new_level = min(10, (self.total_points // 100) + 1)
+        if new_level > self.level:
+            self.level = new_level
+    
+    def get_accuracy(self) -> float:
+        """Calculate quiz accuracy"""
+        if self.total_quizzes == 0:
+            return 0.0
+        return (self.correct_answers / self.total_quizzes) * 100
+
+@dataclass 
+class EnhancedUserProgress:
+    """Enhanced progress tracking with detailed analytics"""
+    user_id: str
+    skill: str
+    lessons_completed: int = 0
+    quiz_scores: List[float] = field(default_factory=list)
+    time_spent: List[float] = field(default_factory=list)
+    mastery_level: float = 0.0
+    last_activity: datetime = field(default_factory=datetime.now)
+    
+    def calculate_mastery(self) -> float:
+        """Calculate skill mastery based on performance"""
+        if not self.quiz_scores:
+            return 0.0
+        
+        avg_score = sum(self.quiz_scores) / len(self.quiz_scores)
+        consistency_bonus = min(len(self.quiz_scores) * 5, 20)  # Max 20% bonus
+        lesson_bonus = min(self.lessons_completed * 2, 10)  # Max 10% bonus
+        
+        self.mastery_level = min(100, avg_score + consistency_bonus + lesson_bonus)
+        return self.mastery_level
+    
+    def update_mastery(self):
+        """Update mastery level"""
+        self.calculate_mastery()
+
+class GamificationManager:
+    """Manages achievements and gamification"""
+    
+    def __init__(self):
+        self.user_stats: Dict[str, UserStats] = {}
+        self.achievements = {
+            "first_steps": Achievement("first_steps", "First Steps", "Complete your first lesson", "🎯"),
+            "quiz_master": Achievement("quiz_master", "Quiz Master", "Score 100% on a quiz", "🧠"),
+            "persistent": Achievement("persistent", "Persistent Learner", "Complete 5 lessons", "💪"),
+            "scholar": Achievement("scholar", "Scholar", "Complete 10 lessons", "🎓"),
+            "expert": Achievement("expert", "Domain Expert", "Master a skill (20 lessons)", "⭐"),
+            "polyglot": Achievement("polyglot", "Polyglot", "Learn 3 different skills", "🌍"),
+            "perfectionist": Achievement("perfectionist", "Perfectionist", "Score 100% on 5 quizzes", "💯"),
+            "speed": Achievement("speed", "Speed Learner", "Complete lesson in under 3 minutes", "⚡"),
+            "consistent": Achievement("consistent", "Consistent", "Learn for 7 days in a row", "📅"),
+            "explorer": Achievement("explorer", "Explorer", "Try voice narration feature", "🎧"),
+        }
+    
+    def get_user_stats(self, user_id: str) -> UserStats:
+        """Get or create user stats"""
+        if user_id not in self.user_stats:
+            self.user_stats[user_id] = UserStats(user_id=user_id)
+        return self.user_stats[user_id]
+    
+    def check_achievements(self, user_id: str, progress: EnhancedUserProgress) -> List[Achievement]:
+        """Check and unlock achievements"""
+        stats = self.get_user_stats(user_id)
+        newly_unlocked = []
+        
+        # Check each achievement
+        achievements_to_check = [
+            ("first_steps", stats.total_lessons >= 1),
+            ("quiz_master", any(score == 100 for score in progress.quiz_scores)),
+            ("persistent", stats.total_lessons >= 5),
+            ("scholar", stats.total_lessons >= 10),
+            ("expert", stats.total_lessons >= 20),
+            ("perfectionist", sum(1 for score in progress.quiz_scores if score == 100) >= 5),
+            ("consistent", stats.streak_days >= 7),
+        ]
+        
+        for achievement_id, condition in achievements_to_check:
+            if condition and achievement_id not in stats.achievements:
+                stats.achievements.append(achievement_id)
+                newly_unlocked.append(self.achievements[achievement_id])
+                stats.add_points(50)  # Bonus points for achievements
+        
+        return newly_unlocked
+
 # Create global instances
 app_instance = AgenticSkillBuilder()
+gamification = GamificationManager()
+
+def generate_voice_narration(text: str, voice_name: str = VOICE_NAME) -> Optional[str]:
+    """Generate voice narration using Azure Speech Services"""
+    if not SPEECH_SDK_AVAILABLE or not VOICE_KEY:
+        logger.warning("Voice narration not available - missing Speech SDK or API key")
+        return None
+    
+    try:
+        # Configure speech service
+        speech_config = speechsdk.SpeechConfig(subscription=VOICE_KEY, region=VOICE_REGION)
+        speech_config.speech_synthesis_voice_name = voice_name
+        
+        # Generate filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        audio_filename = f"narration_{timestamp}.wav"
+        
+        # Configure audio output
+        audio_config = speechsdk.audio.AudioOutputConfig(filename=audio_filename)
+        
+        # Create synthesizer
+        speech_synthesizer = speechsdk.SpeechSynthesizer(
+            speech_config=speech_config,
+            audio_config=audio_config
+        )
+        
+        # Create SSML for educational content
+        ssml_text = f"""
+        <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+            <voice name="{voice_name}">
+                <prosody rate="0.9" pitch="medium">
+                    {text}
+                </prosody>
+            </voice>
+        </speak>
+        """
+        
+        # Synthesize speech
+        result = speech_synthesizer.speak_ssml_async(ssml_text).get()
+        
+        if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+            logger.info(f"Voice narration generated: {audio_filename}")
+            return audio_filename
+        else:
+            logger.error(f"Speech synthesis failed: {result.reason}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error generating voice narration: {e}")
+        return None
 
 # ===== MCP SERVER INTEGRATION =====
 
 # FastAPI app for MCP endpoints
 mcp_app = FastAPI(
-    title="Agentic Skill Builder MCP Server",
+    title="SkillSprout MCP Server",
     description="Model Context Protocol endpoints for microlearning integration - Hackathon 2025",
     version="1.0.0"
 )
@@ -74,7 +251,7 @@ class QuizSubmission(BaseModel):
 async def root():
     """Root endpoint with hackathon information"""
     return {
-        "name": "Agentic Skill Builder MCP Server",
+        "name": "SkillSprout MCP Server",
         "version": "1.0.0",
         "hackathon": "Gradio Agents & MCP Hackathon 2025",
         "track": "mcp-server-track",
@@ -121,9 +298,8 @@ async def generate_lesson_mcp(request: LessonRequest):
             "user_context": {
                 "user_id": request.user_id,
                 "current_difficulty": progress.current_difficulty,
-                "lessons_completed": progress.lessons_completed
-            },
-            "mcp_server": "Agentic Skill Builder",
+                "lessons_completed": progress.lessons_completed            },
+            "mcp_server": "SkillSprout",
             "timestamp": datetime.now().isoformat()
         }
         
@@ -142,10 +318,9 @@ async def get_user_progress_mcp(user_id: str, skill: str = None):
                 "user_id": progress.user_id,
                 "skill": progress.skill,
                 "lessons_completed": progress.lessons_completed,
-                "average_score": progress.get_average_score(),
-                "current_difficulty": progress.current_difficulty,
+                "average_score": progress.get_average_score(),                "current_difficulty": progress.current_difficulty,
                 "recommendations": recommendation,
-                "mcp_server": "Agentic Skill Builder"
+                "mcp_server": "SkillSprout"
             }
         else:
             user_progress_data = {}
@@ -161,9 +336,8 @@ async def get_user_progress_mcp(user_id: str, skill: str = None):
             
             return {
                 "user_id": user_id,
-                "skills_progress": user_progress_data,
-                "total_skills_learning": len(user_progress_data),
-                "mcp_server": "Agentic Skill Builder",
+                "skills_progress": user_progress_data,                "total_skills_learning": len(user_progress_data),
+                "mcp_server": "SkillSprout",
                 "timestamp": datetime.now().isoformat()
             }
             
@@ -210,10 +384,9 @@ async def submit_quiz_results_mcp(submission: QuizSubmission):
             "updated_progress": {
                 "lessons_completed": progress.lessons_completed,
                 "average_score": progress.get_average_score(),
-                "current_difficulty": progress.current_difficulty
-            },
+                "current_difficulty": progress.current_difficulty            },
             "recommendation": recommendation,
-            "mcp_server": "Agentic Skill Builder",
+            "mcp_server": "SkillSprout",
             "timestamp": datetime.now().isoformat()
         }
         
@@ -226,7 +399,7 @@ def create_interface():
     """Create the Gradio interface with enhanced hackathon features"""
     
     with gr.Blocks(
-        title="Agentic Skill Builder - MCP Hackathon 2025",
+        title="SkillSprout - MCP Hackathon 2025",
         theme=gr.themes.Soft(),
         css="""
         .gradio-container {
@@ -246,7 +419,7 @@ def create_interface():
         # Enhanced Header for Hackathon
         gr.HTML("""
         <div class="hackathon-header">
-            <h1>🚀 Agentic Skill Builder</h1>
+            <h1>🌱 SkillSprout</h1>
             <h3>AI-Powered Microlearning with MCP Integration</h3>
             <p><strong>🏆 Gradio Agents & MCP Hackathon 2025 Submission</strong></p>
             <p>Track: MCP Server/Tool • Demonstrating Agentic AI Workflows</p>
@@ -276,9 +449,14 @@ def create_interface():
                     )
                     
                     start_btn = gr.Button("🚀 Start Learning", variant="primary", size="lg")
-            
-            # Learning content areas
+              # Learning content areas
             lesson_output = gr.Markdown(visible=False)
+            
+            # Voice narration controls
+            with gr.Row(visible=False) as voice_controls:
+                voice_btn = gr.Button("🎧 Generate Voice Narration", variant="secondary")
+                voice_audio = gr.Audio(label="Lesson Audio", visible=False)
+            
             lesson_btn = gr.Button("Complete Lesson", visible=False)
             
             quiz_output = gr.Markdown(visible=False)
@@ -345,71 +523,142 @@ def create_interface():
                 
                 with gr.Column():
                     mcp_output = gr.JSON(label="MCP Server Response")
-        
-        # Event handlers (same as original app.py)
-        async def handle_start_learning(skill_choice, custom_skill_input):
+          # Event handlers with gamification integration
+        def handle_start_learning(skill_choice, custom_skill_input, user_id="default"):
+            """Enhanced learning session handler with gamification"""
             skill = custom_skill_input.strip() if custom_skill_input.strip() else skill_choice
-            if not skill:
-                return [
+            if not skill:                return [
                     gr.update(value="⚠️ Please select or enter a skill to continue."),
+                    gr.update(visible=False),  # voice_controls
                     gr.update(visible=False),
                     gr.update(visible=False),
                     skill
                 ] + [gr.update(visible=False, value="") for _ in range(5)]
             
-            lesson_content, btn_text, _ = await app_instance.start_lesson(skill)
-            
-            return [
-                gr.update(value=lesson_content),
-                gr.update(value=btn_text, visible=True),
-                gr.update(visible=False),
-                skill
-            ] + [gr.update(visible=False, value="") for _ in range(5)]
-        
-        async def handle_complete_lesson():
-            quiz_content, btn_text, _ = await app_instance.complete_lesson_and_start_quiz()
-            
-            quiz_updates = []
-            if app_instance.current_quiz:
-                for i, question in enumerate(app_instance.current_quiz.questions):
-                    if i < len(quiz_inputs):
-                        label = f"Q{i+1}: {question['question'][:50]}..."
-                        quiz_updates.append(gr.update(label=label, visible=True))
-                    else:
+            try:
+                # Start lesson using the app instance (sync call)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                lesson_content, btn_text, _ = loop.run_until_complete(app_instance.start_lesson(skill))
+                app_instance.current_user = user_id
+                
+                # Update user stats
+                stats = gamification.get_user_stats(user_id)
+                stats.total_lessons += 1
+                stats.add_points(10)  # Points for starting lesson
+                
+                # Check for achievements
+                progress = EnhancedUserProgress(user_id=user_id, skill=skill)
+                progress.lessons_completed = stats.total_lessons
+                newly_unlocked = gamification.check_achievements(user_id, progress)
+                return [
+                    gr.update(value=lesson_content),
+                    gr.update(visible=True),  # voice_controls
+                    gr.update(value=btn_text, visible=True),
+                    gr.update(visible=False),
+                    skill
+                ] + [gr.update(visible=False, value="") for _ in range(5)]
+                
+            except Exception as e:
+                logger.error(f"Error starting lesson: {e}")                
+                return [
+                    gr.update(value=f"❌ Error starting lesson: {str(e)}"),
+                    gr.update(visible=False),  # voice_controls
+                    gr.update(visible=False),
+                    gr.update(visible=False),
+                    skill
+                ] + [gr.update(visible=False, value="") for _ in range(5)]
+
+        def handle_complete_lesson(user_id="default"):
+            """Handle lesson completion and start quiz with gamification"""
+            try:
+                # Complete lesson and generate quiz (sync call)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                quiz_content, btn_text, _ = loop.run_until_complete(app_instance.complete_lesson_and_start_quiz())
+                
+                # Update user stats - lesson completed
+                stats = gamification.get_user_stats(user_id)
+                stats.add_points(20)  # Points for completing lesson
+                
+                quiz_updates = []
+                if app_instance.current_quiz:
+                    for i, question in enumerate(app_instance.current_quiz.questions):
+                        if i < len(quiz_inputs):
+                            label = f"Q{i+1}: {question['question'][:50]}..."
+                            quiz_updates.append(gr.update(label=label, visible=True))
+                        else:
+                            quiz_updates.append(gr.update(visible=False))
+                    for i in range(len(app_instance.current_quiz.questions), len(quiz_inputs)):
                         quiz_updates.append(gr.update(visible=False))
-                for i in range(len(app_instance.current_quiz.questions), len(quiz_inputs)):
-                    quiz_updates.append(gr.update(visible=False))
-            else:
-                quiz_updates = [gr.update(visible=False) for _ in range(len(quiz_inputs))]
-            
-            return [
-                gr.update(visible=False),
-                gr.update(value=quiz_content, visible=True),
-                gr.update(value=btn_text, visible=True),
-                gr.update(visible=False)
-            ] + quiz_updates
-        
-        def handle_submit_quiz(*answers):
-            valid_answers = [ans for ans in answers if ans is not None and ans != ""]
-            results_content, btn_text, _ = app_instance.submit_quiz(*valid_answers)
-            
-            return [
-                gr.update(visible=False),
-                gr.update(value=results_content, visible=True),
-                gr.update(value=btn_text, visible=True),
-                gr.update(visible=False)
-            ] + [gr.update(visible=False) for _ in range(len(quiz_inputs))]
-        
+                else:
+                    quiz_updates = [gr.update(visible=False) for _ in range(len(quiz_inputs))]
+                
+                return [
+                    gr.update(visible=False),
+                    gr.update(value=quiz_content, visible=True),
+                    gr.update(value=btn_text, visible=True),
+                    gr.update(visible=False)
+                ] + quiz_updates
+            except Exception as e:
+                logger.error(f"Error completing lesson: {e}")
+                return [
+                    gr.update(visible=False),
+                    gr.update(value=f"❌ Error completing lesson: {str(e)}", visible=True),
+                    gr.update(visible=False),
+                    gr.update(visible=False)
+                ] + [gr.update(visible=False) for _ in range(len(quiz_inputs))]
+
+        def handle_submit_quiz(*answers, user_id="default"):
+            """Handle quiz submission with gamification"""
+            try:
+                valid_answers = [ans for ans in answers if ans is not None and ans != ""]
+                results_content, btn_text, _ = app_instance.submit_quiz(*valid_answers)
+                
+                # Update user stats for quiz completion
+                stats = gamification.get_user_stats(user_id)
+                stats.total_quizzes += 1
+                
+                # Calculate quiz score and update stats
+                if app_instance.current_quiz and app_instance.current_quiz.questions:
+                    total_questions = len(app_instance.current_quiz.questions)
+                    # Simple scoring: assume each correct answer is worth points
+                    score_points = len(valid_answers) * 20  # Base points per answer
+                    stats.add_points(score_points)
+                    
+                    # Check if perfect score (simplified check)
+                    if "100%" in results_content or "Perfect" in results_content:
+                        stats.correct_answers += total_questions
+                        stats.add_points(50)  # Bonus for perfect score
+                    else:
+                        # Estimate correct answers based on content (simplified)
+                        stats.correct_answers += max(1, len(valid_answers) // 2)
+                
+                return [
+                    gr.update(visible=False),
+                    gr.update(value=results_content, visible=True),
+                    gr.update(value=btn_text, visible=True),
+                    gr.update(visible=False)
+                ] + [gr.update(visible=False) for _ in range(len(quiz_inputs))]
+                
+            except Exception as e:
+                logger.error(f"Error submitting quiz: {e}")
+                return [
+                    gr.update(visible=False),
+                    gr.update(value=f"❌ Error submitting quiz: {str(e)}", visible=True),
+                    gr.update(visible=False),
+                    gr.update(visible=False)
+                ] + [gr.update(visible=False) for _ in range(len(quiz_inputs))]
         def handle_restart():
             return [
                 gr.update(visible=False),
+                gr.update(visible=False),  # voice_controls
                 gr.update(visible=False),
                 gr.update(visible=False),
                 gr.update(visible=False),
                 gr.update(visible=False),
                 ""
             ] + [gr.update(visible=False, value="") for _ in range(len(quiz_inputs))]
-        
         def update_progress_display():
             if not app_instance.progress_agent.user_data:
                 return "**No learning data yet.** Complete some lessons to see your progress!"
@@ -425,6 +674,40 @@ def create_interface():
                 
                 """
             return progress_content
+        
+        def handle_voice_generation(lesson_content, user_id="default"):
+            """Generate voice narration for lesson content"""
+            if not lesson_content or lesson_content == "":
+                return gr.update(value=None, visible=False), "❌ No lesson content to narrate"
+            
+            try:
+                # Extract text content from markdown
+                import re
+                # Remove markdown formatting for better speech
+                text_content = re.sub(r'[#*`]', '', lesson_content)
+                text_content = text_content.replace('\n', ' ').strip()
+                
+                # Limit text length for better narration
+                if len(text_content) > 1000:
+                    text_content = text_content[:1000] + "..."
+                
+                # Generate voice narration
+                audio_file = generate_voice_narration(text_content)
+                
+                if audio_file:
+                    # Award achievement for using voice feature
+                    stats = gamification.get_user_stats(user_id)
+                    if "explorer" not in stats.achievements:
+                        stats.achievements.append("explorer")
+                        stats.add_points(25)
+                    
+                    return gr.update(value=audio_file, visible=True), "🎧 Voice narration generated!"
+                else:
+                    return gr.update(value=None, visible=False), "❌ Voice narration not available"
+                    
+            except Exception as e:
+                logger.error(f"Error generating voice: {e}")
+                return gr.update(value=None, visible=False), f"❌ Error: {str(e)}"
         
         async def test_mcp_endpoint(skill, user_id):
             """Test MCP endpoint directly from the interface"""
@@ -456,9 +739,8 @@ def create_interface():
                         "user_context": {
                             "user_id": user_id,
                             "current_difficulty": progress.current_difficulty,
-                            "lessons_completed": progress.lessons_completed
-                        },
-                        "mcp_server": "Agentic Skill Builder",
+                            "lessons_completed": progress.lessons_completed                        },
+                        "mcp_server": "SkillSprout",
                         "status": "success"
                     }
                 }
@@ -471,12 +753,17 @@ def create_interface():
                     "error": str(e),
                     "status": "error"
                 }
-        
-        # Wire up events
+          # Wire up events
         start_btn.click(
             handle_start_learning,
             inputs=[skill_dropdown, custom_skill],
-            outputs=[lesson_output, lesson_btn, quiz_output, current_skill] + quiz_inputs[:5]
+            outputs=[lesson_output, voice_controls, lesson_btn, quiz_output, current_skill] + quiz_inputs[:5]
+        )
+        
+        voice_btn.click(
+            handle_voice_generation,
+            inputs=[lesson_output],
+            outputs=[voice_audio, lesson_output]
         )
         
         lesson_btn.click(
@@ -489,10 +776,9 @@ def create_interface():
             inputs=quiz_inputs,
             outputs=[quiz_submit_btn, results_output, restart_btn, quiz_output] + quiz_inputs
         )
-        
         restart_btn.click(
             handle_restart,
-            outputs=[lesson_output, quiz_output, results_output, lesson_btn, restart_btn, current_skill] + quiz_inputs
+            outputs=[lesson_output, voice_controls, quiz_output, results_output, lesson_btn, restart_btn, current_skill] + quiz_inputs
         )
         
         refresh_progress_btn.click(
