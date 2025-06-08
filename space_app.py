@@ -816,11 +816,12 @@ def main():
     
     # Create and launch Gradio interface
     demo = create_interface()
+    # For Hugging Face Spaces, we should not set share=True
+    # Also ensure we're not setting any problematic launch parameters
     demo.launch(
         server_name="0.0.0.0",
         server_port=7860,
-        share=True,  # Enable sharing for demo purposes
-        show_error=True
+        share=False  # Changed from True to False for HF Spaces
     )
 
 if __name__ == "__main__":
