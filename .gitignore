@@ -49,13 +49,6 @@ venv/
 env/
 .venv/
 
-# Large media files (use Git LFS if needed)
-*.mp4
-*.avi
-*.mov
-*.mkv
-assets/*.mp4
-
 # Enhanced version files (development)
 skillsprout_enhanced.py
 space_app copy.py
