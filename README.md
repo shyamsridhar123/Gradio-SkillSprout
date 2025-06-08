@@ -16,7 +16,7 @@ tags:
   - microlearning
   - azure-openai
   - model-context-protocol
-short_description: AI-powered microlearning platform with MCP integration - Track 1 & 3 submission
+short_description: AI-powered microlearning platform with MCP
 ---
 
 # 🌱 SkillSprout
