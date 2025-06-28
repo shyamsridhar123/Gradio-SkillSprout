@@ -75,3 +75,16 @@ validate_hackathon.py
 
 # Internal analysis and debugging documents
 SPACE_APP_ISSUES_ANALYSIS.md
+
+# Git history cleaning tools
+bfg.jar
+bfg-*.jar
+secrets.txt
+*.replace
+*.replacements
+skillsprout_enhanced.py
+space_app copy.py
+validate_hackathon.py
+prd.md
+hf-hack-code-workspace.code-workspace
+simple_test.py
