@@ -25,7 +25,7 @@ SkillSprout is a personalized learning platform I built to make online education
 
 **SkillSprout in Action:**
 
-![SkillSprout Demo](assets/skillsprout-demo.gif)
+![SkillSprout Demo](assets/Gradio-Microlearning.gif)
 
 *The demo shows the SkillSprout platform in action, highlighting how the MCP server endpoints integrate seamlessly with the Gradio interface, enabling personalized learning experiences through Model Context Protocol functionality.*
 
@@ -463,16 +463,34 @@ SkillSprout was developed as an innovative solution to showcase:
 - **Engagement-Focused Design**: Full gamification system with achievements, points, and progression mechanics
 - **Multi-Modal Education**: Combined text, interactive, and audio-based learning pathways
 
-## � Looking Ahead
-
-While building SkillSprout, I've identified several areas for future development:
-
-1. **Mobile Application**: Creating a native app experience for on-the-go learning
-2. **Enhanced Voice Integration**: Adding voice input for hands-free interaction
-3. **Learning Communities**: Building social features for collaborative learning
-4. **Expanded Language Support**: Adding multilingual capabilities for global access
-5. **Plugin System**: Creating an extensible platform for third-party learning modules
-
 I'm always open to feedback and collaboration. If you're interested in contributing or have ideas for improvement, please reach out.
 
 **Happy Learning! 🎓**
+
+## 📄 License
+
+SkillSprout is released under the MIT License.
+
+```
+MIT License
+
+Copyright (c) 2024 SkillSprout
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
