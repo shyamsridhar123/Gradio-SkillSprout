@@ -11,12 +11,12 @@ import gradio as gr
 from openai import AzureOpenAI
 import pandas as pd
 
+# Load environment variables for local development
+load_dotenv()
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Load environment variables
-load_dotenv()
 
 # Azure OpenAI client configuration
 client = AzureOpenAI(
@@ -518,7 +518,8 @@ def create_interface():
             
             *Coming soon: Full MCP server implementation*
             """)
-          # Event handlers
+        
+        # Event handlers
         async def handle_start_learning(skill_choice, custom_skill_input):
             skill = custom_skill_input.strip() if custom_skill_input.strip() else skill_choice
             if not skill:

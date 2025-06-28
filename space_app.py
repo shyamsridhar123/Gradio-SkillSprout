@@ -1,7 +1,7 @@
 """
-SkillSprout - Hackathon Submission
+SkillSprout - Personalized Learning Platform
 A unified app.py that serves both Gradio interface and MCP server endpoints
-for the Gradio Agents & MCP Hackathon 2025
+for AI-powered microlearning and skill development
 """
 
 import os
@@ -17,7 +17,6 @@ import math
 import base64
 from io import BytesIO
 
-from dotenv import load_dotenv
 import gradio as gr
 from openai import AzureOpenAI
 import pandas as pd
@@ -37,8 +36,8 @@ except ImportError:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables (works locally with .env, in Spaces with secrets)
-load_dotenv()
+# Environment variables are loaded from Azure App Service configuration
+# No need for dotenv since Azure App Service provides environment variables directly
 
 # Azure OpenAI client configuration
 client = AzureOpenAI(
@@ -231,9 +230,20 @@ def generate_voice_narration(text: str, voice_name: str = VOICE_NAME) -> Optiona
 # FastAPI app for MCP endpoints
 mcp_app = FastAPI(
     title="SkillSprout MCP Server",
-    description="Model Context Protocol endpoints for microlearning integration - Hackathon 2025",
+    description="Model Context Protocol endpoints for microlearning integration",
     version="1.0.0"
 )
+
+# Health check endpoint for Azure App Service
+@mcp_app.get("/health")
+async def health_check():
+    """Health check endpoint for Azure App Service monitoring"""
+    return {
+        "status": "healthy",
+        "service": "SkillSprout MCP Server",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0"
+    }
 
 # Pydantic models for API
 class LessonRequest(BaseModel):
@@ -249,12 +259,10 @@ class QuizSubmission(BaseModel):
 
 @mcp_app.get("/")
 async def root():
-    """Root endpoint with hackathon information"""
+    """Root endpoint with service information"""
     return {
         "name": "SkillSprout MCP Server",
         "version": "1.0.0",
-        "hackathon": "Gradio Agents & MCP Hackathon 2025",
-        "track": "mcp-server-track",
         "description": "MCP endpoints for AI-powered microlearning",
         "endpoints": {
             "GET /mcp/lesson/generate": "Generate next lesson for a skill",
@@ -396,17 +404,17 @@ async def submit_quiz_results_mcp(submission: QuizSubmission):
 # ===== GRADIO INTERFACE =====
 
 def create_interface():
-    """Create the Gradio interface with enhanced hackathon features"""
+    """Create the Gradio interface with enhanced learning features"""
     
     with gr.Blocks(
-        title="SkillSprout - MCP Hackathon 2025",
+        title="SkillSprout - Personalized Learning Platform",
         theme=gr.themes.Soft(),
         css="""
         .gradio-container {
             max-width: 900px !important;
             margin: auto !important;
         }
-        .hackathon-header {
+        .app-header {
             background: linear-gradient(90deg, #ff7b7b, #667eea);
             color: white;
             padding: 1rem;
@@ -416,13 +424,12 @@ def create_interface():
         """
     ) as demo:
         
-        # Enhanced Header for Hackathon
+        # Application Header
         gr.HTML("""
-        <div class="hackathon-header">
+        <div class="app-header">
             <h1>🌱 SkillSprout</h1>
             <h3>AI-Powered Microlearning with MCP Integration</h3>
-            <p><strong>🏆 Gradio Agents & MCP Hackathon 2025 Submission</strong></p>
-            <p>Track: MCP Server/Tool • Demonstrating Agentic AI Workflows</p>
+            <p><strong>Your Personalized Learning Assistant</strong></p>
         </div>
         """)
         
@@ -505,7 +512,7 @@ def create_interface():
                  -d '{"skill": "Python Programming", "user_id": "agent_user"}'
             ```
             
-            #### 🎯 Hackathon Innovation:
+            #### 🎯 Key Features:
             - **Agentic Architecture**: Multiple AI agents (Lesson, Quiz, Progress) collaborate
             - **MCP Protocol**: Full Model Context Protocol implementation
             - **Adaptive Learning**: AI adjusts difficulty based on performance
@@ -812,7 +819,7 @@ def main():
         
         # For Hugging Face Spaces, we need specific launch parameters
         demo.launch(
-            server_name="0.0.0.0",  # Allow external connections
+            server_name="127.0.0.1",  # Allow external connections
             server_port=7860,       # HF Spaces default port
             share=True,            # Don't create public link on HF Spaces
             show_error=True,        # Show errors in the UI
